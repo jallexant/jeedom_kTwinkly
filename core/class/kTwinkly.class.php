@@ -440,12 +440,13 @@ class kTwinkly extends eqLogic {
                     $clearMemCmd->setOrder($cmdIndex);
                     $clearMemCmd->save();
                 }
-            }
+            } 
 
             $cmdIndex++;
             $refreshCmd = $this->getCmd(null, "refresh");
             if (!is_object($refreshCmd))
             {
+				log::add('kTwinkly','debug',"refreshCmd creation");
                 $refreshCmd = new kTwinklyCmd();
                 $refreshCmd->setName(__('Refresh', __FILE__));
                 $refreshCmd->setEqLogic_id($this->getId());
@@ -456,7 +457,10 @@ class kTwinkly extends eqLogic {
                 $refreshCmd->setValue('refresh');
                 $refreshCmd->setOrder($cmdIndex);
                 $refreshCmd->save();
-            }
+            } else {
+				log::add('kTwinkly','debug',"refreshCmd already exists");
+			}
+			
             self::populate_movies_list($this->getID());
         }
         elseif($this->getConfiguration("devicetype") == "music")
@@ -768,7 +772,14 @@ class kTwinkly extends eqLogic {
         {
             throw new Exception(__('Tache cron introuvable', __FILE__));
         }
-        $cron->run();
+		
+		$refreshFrequency = config::byKey('refreshFrequency','kTwinkly');
+        if (intval($refreshFrequency) > 0) {
+			$cron->setDeamonSleepTime(intval($refreshFrequency));
+			$cron->setEnable(1);
+		}
+		$cron->save();
+		$cron->run();
     }
 
     public static function deamon_changeAutoMode($_mode)
@@ -794,7 +805,8 @@ class kTwinkly extends eqLogic {
         }
 
         $refreshFrequency = config::byKey('refreshFrequency','kTwinkly');
-
+		log::add('kTwinkly','debug','kTwinkly refreshFrequency=' . $refreshFrequency);
+		
         foreach (self::$_eqLogics as &$eqLogic)
         {
             if ($_eqLogic_id != null && $_eqLogic_id != $eqLogic->getId())
@@ -841,7 +853,8 @@ class kTwinkly extends eqLogic {
                         $changed = $eqLogic->checkAndUpdateCmd('brightness_state', $brightness, false) || $changed;
                         */
                         $refreshCmd = $eqLogic->getCmd(null, "refresh");
-                        if (!is_object($refreshCmd)) {
+						log::add('kTwinkly','debug','kTwinkly refreshsate id=' . $eqLogic->getId() . ' type= ' . gettype($refreshCmd));
+                        if (is_object($refreshCmd)) {
                             $refreshCmd->execute();
                         }
                     }
@@ -858,7 +871,7 @@ class kTwinkly extends eqLogic {
                         //$changed = $eqLogic->checkAndUpdateCmd('micstate', $microphone_state, false) || $changed;
                         */
                         $refreshCmd = $eqLogic->getCmd(null, "refresh");
-                        if (!is_object($refreshCmd)) {
+                        if (is_object($refreshCmd)) {
                             $refreshCmd->execute();
                         }
                     }
